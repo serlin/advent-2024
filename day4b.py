@@ -47,7 +47,7 @@ def count_loc(m, n):
         return 0
     # What 4 surround.
     bs = lines[m-1][n-1] + lines[m-1][n+1] + lines[m+1][n+1] + lines[m+1][n-1]
-    # Some iteration of MSSM works 
+    # Some iteration of MSSM works. should just be in a set.
     if bs == "MSSM" or bs == "MMSS" or bs == "SMMS" or bs == "SSMM":
         count += 1
     return count
