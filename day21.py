@@ -3,174 +3,221 @@ import re
 import copy
 import functools
 import itertools
-from functools import cmp_to_key
+from itertools import pairwise
+from functools import cache
 import networkx as nx
 from enum import Enum
 import aocd
 from time import sleep
 
-data = aocd.get_data(day=20, year=2024)
+data = aocd.get_data(day=21, year=2024)
 
-sample = """###############
-#...#...#.....#
-#.#.#.#.#.###.#
-#S#...#.#.#...#
-#######.#.#.###
-#######.#.#...#
-#######.#.###.#
-###..E#...#...#
-###.#######.###
-#...###...#...#
-#.#####.#.###.#
-#.#...#.#.#...#
-#.#.#.#.#.#.###
-#...#...#...###
-###############
+sample = """029A
+980A
+179A
+456A
+379A
 """
-
 
 # data = sample
 
-map = data.splitlines()
-start_loc = (-1, -1)
-end_loc = (-1, -1)
+codes = data.splitlines()
 
-all_cells = {} #(x,y), Cell
-print(map)
+numpad = nx.DiGraph()
+controller = nx.DiGraph()
 
-max_x = len(map[0])
-max_y = len(map)
+numpad.add_edge("7", "8", command=">")
+numpad.add_edge("8", "9", command=">")
+numpad.add_edge("4", "5", command=">")
+numpad.add_edge("5", "6", command=">")
+numpad.add_edge("1", "2", command=">")
+numpad.add_edge("2", "3", command=">")
+numpad.add_edge("0", "A", command=">")
+numpad.add_edge("9", "8", command="<")
+numpad.add_edge("8", "7", command="<")
+numpad.add_edge("6", "5", command="<")
+numpad.add_edge("5", "4", command="<")
+numpad.add_edge("3", "2", command="<")
+numpad.add_edge("2", "1", command="<")
+numpad.add_edge("A", "0", command="<")
+numpad.add_edge("7", "4", command="v")
+numpad.add_edge("4", "1", command="v")
+numpad.add_edge("8", "5", command="v")
+numpad.add_edge("5", "2", command="v")
+numpad.add_edge("2", "0", command="v")
+numpad.add_edge("9", "6", command="v")
+numpad.add_edge("6", "3", command="v")
+numpad.add_edge("3", "A", command="v")
+numpad.add_edge("1", "4", command="^")
+numpad.add_edge("4", "7", command="^")
+numpad.add_edge("0", "2", command="^")
+numpad.add_edge("2", "5", command="^")
+numpad.add_edge("5", "8", command="^")
+numpad.add_edge("A", "3", command="^")
+numpad.add_edge("3", "6", command="^")
+numpad.add_edge("6", "9", command="^")
 
-class Cell:
-    global all_cells
-    global max_x
-    global max_y
+controller.add_edge("<", "v", command=">")
+controller.add_edge("v", "<", command="<")
+controller.add_edge("v", "^", command="^")
+controller.add_edge("^", "v", command="v")
+controller.add_edge("^", "A", command=">")
+controller.add_edge("A", "^", command="<")
+controller.add_edge("v", ">", command=">")
+controller.add_edge(">", "v", command="<")
+controller.add_edge(">", "A", command="^")
+controller.add_edge("A", ">", command="v")
 
-    end_dist = -1
-    def __init__(self, location, chr):
-        self.chr = chr
-        if chr == "S" or chr == "E":
-            self.chr = "."
-        self.location = location
+print("Numpad: ", numpad)
+print("Controller: ", controller)
 
-    def __str__(self):
-        return f'{self.location}: {self.chr}'
+# def paths_from_pair(source, dest, grid): #[str]
+#     # print("Expanding: ", source, " to ", dest)
+
+#     possible_sub_paths = []
+
+#     # routes = 
+#     for route in routes:
+#         s = ""
+#         for s, d in pairwise(route):
+#             # print(grid[route[idx]][route[idx+1]]['command'], end="")
+#             s += grid[s][d]['command']
+#         s += "A"
+#         possible_sub_paths.append(s)
+#         # print("")
+#     # print(source, ":", dest, " - ", possible_sub_paths)
+#     return possible_sub_paths
+@cache
+def path_length(path, count):
+    # print("finding length of ", path, " at ", count)
+    if count == 26:
+        # print("Hit bottom with: ", path)
+        return len(path)
+    if count == 0:
+        grid = numpad
+    else:
+        grid = controller
+
+    total = 0
+    for source, dest in pairwise("A" + path):
+        costs = []
+        routes = nx.all_shortest_paths(grid, source, dest)
+        for route in routes:
+            s = ""
+            for s1,d1 in pairwise(route):
+                s+= grid[s1][d1]['command']
+            s += 'A'
+
+        # paths_from_pair(pair[0], pair[1], grid)
+            # print(s)
+            costs.append(path_length(s, count+1))
+        # for next_path in next_paths:
+        #     arr.append(path_length(next_path, count+1))
+        # # print(next_paths)
+        # print(arr)  
+        total += min(costs)
+
+
+    # print(path, " total returned is: ", total)
+    return total
     
-    def __repr__(self):
-        return f'{self.location}: {self.chr}'
-    
-    def east_neighbor(self):
-        new_loc = (self.location[0]+1, self.location[1])
-        if new_loc in all_cells:
-            return all_cells[new_loc]
-        else:
-            return None
+    # for idx in range(0, len(path) - 1):
+    #     sub_paths = []
+    #     arr = paths_from_pair(path[idx], path[idx+1], grid)
+    #     sub_paths.append(arr)
+
+    # path_total = 0
+    # for sub_path in sub_paths:
+    #     lengths = []
+    #     for sub in sub_path:
+    #         lengths.append(path_length(sub, count+1))
+    #     print(lengths)
+    #     path_total += min(lengths)
         
-    def west_neighbor(self):
-        new_loc = (self.location[0]-1, self.location[1])
-        if new_loc in all_cells:
-            return all_cells[new_loc]
-        else:
-            return None
-
-    def north_neighbor(self):
-        new_loc = (self.location[0], self.location[1]-1)
-        if new_loc in all_cells:
-            return all_cells[new_loc]
-        else:
-            return None
-
-    def south_neighbor(self):
-        new_loc = (self.location[0], self.location[1]+1)
-        if new_loc in all_cells:
-            return all_cells[new_loc]
-        else:
-            return None
-    
-    def neighbors(self):
-        return [x for x in [self.east_neighbor(), self.west_neighbor(), self.north_neighbor(), self.south_neighbor()] if x]
-
-    def non_wall_neighbors(self):
-        ret = []
-        for neighbor in self.neighbors():
-            if neighbor.chr == ".":
-                ret.append(neighbor)
-        return ret
-
-    def wall_neighbors(self):
-        ret = []
-        for neighbor in self.neighbors():
-            if neighbor.chr == "#":
-                ret.append(neighbor)
-        return ret
-
-def draw_grid():
-    print("----------------------------------------------------------------------------------")
-    for y in range(0, max_y):
-        print("")
-        for x in range(0, max_x):
-            print(all_cells[(x, y)].chr, end='')
-    print("\n----------------------------------------------------------------------------------")
-
-def cell_distance(c1, c2):
-    return abs(c1.location[0] - c2.location[0]) + abs(c1.location[1] - c2.location[1])
+          
+    #     # for sub_path in arr:
+    #         # sub_path_costs.append(path_length(sub_path, count+1))
+    #     # path_total += min(sub_path_costs)
 
 
-for idx, line in enumerate(map):
-    match = re.search("S", line)
-    if match:
-        print("found start at: ", match.start(), ":", idx)
-        start_loc = (match.start(), idx)
-    match = re.search("E", line)
-    if match:
-        print("found end at:: ", match.start(), ":", idx)
-        end_loc = (match.start(), idx)
+    # return path_total
 
-for y, line in enumerate(map):
-    for x, chr in enumerate(line):
-            all_cells[(x,y)] = Cell((x, y), chr)
-
-start_cell = all_cells[(start_loc)]
-end_cell = all_cells[(end_loc)]
-
-# print(all_cells)
-print("----------------------------")
-draw_grid()
-
-G = nx.Graph()
-print(G)
-
-for loc, cell in all_cells.items():
-    if cell.chr == ".":
-        for tar in cell.non_wall_neighbors():
-            G.add_edge(cell, tar)
-
-full_run_length = nx.shortest_path_length(G, source=start_cell, target=end_cell)
-full_run = nx.shortest_path(G, source=start_cell, target=end_cell)
-
-for idx, cell in enumerate(full_run):
-    # print(idx, ": ", cell)
-    cell.end_dist = full_run_length - idx
-
-print("Full run length: ", full_run_length)
-# print(G)
 total = 0
+for line in codes:
+# line = codes[0]
+# total = path_length("A" + line, 0)
+    num_part = int(line[0:3])
+    res = path_length(line, 0)
+    total += num_part * res
 
-for (c1, c2) in itertools.combinations(full_run, 2):
-    distance = cell_distance(c1, c2)
-    if distance <= 2:
-        if abs(c1.end_dist - c2.end_dist) - distance >= 100:
-            total +=1
 
+
+# res = []
+# for i in range(0, len(line) - 1):
+#     res.append(paths_from_pair(line[i], line[i+1], numpad))
+#     rt = []
+#     for r in res:
+#         pass
+
+    print(res)
 print("Part 1 totaL: ", total)
 
-total = 0
+# def sub_path(path,print("A" + line)
+# count):
+#     pass
 
-for (c1, c2) in itertools.combinations(full_run, 2):
-    distance = cell_distance(c1, c2)
-    if distance <= 20:
-        if abs(c1.end_dist - c2.end_dist) - distance >= 100:
-            total +=1
+# def expand(commands):
+    # arr = []
+    # tot = 0
+    # # print(pair_expand(commands[0], commands[1], 0))
+    # # tot += pair_expand(commands[0], commands[1], 0)
+    # for i in range(0, len(commands) - 1):
+    #     tot += pair_expand(commands[i], commands[i+1], 0)
+    # return tot
+    # # if first_time:
+    # first = nx.shortest_path(grid, "A", commands[0])
+    # print("Moving from: ", first[0], "to ", commands[0])
+    # for i in range(0, len(first) -1):
+    #     print(grid[first[i]][first[i+1]]['command'], end="")
+    #     s += grid[first[i]][first[i+1]]['command']
+    # s += "A"
+    # print("A")
 
-print("Part 2 totaL: ", total)
+    # for i in range(0, len(commands) - 1):
+    #     s = ""
+    #     routes = nx.all_shortest_paths(grid, commands[i], commands[i+1])
+    #     print("Moving from: ", commands[i], " to ", commands[i+1], " with ", len(routes), " options")
+    #     for route in routes:
+    #         pass
+    #     if len(enter) > 0:
+    #         for idx in range(0, len(enter) - 1):
+    #             print(grid[enter[idx]][enter[idx+1]]['command'], end="")
+    #             s += grid[enter[idx]][enter[idx+1]]['command']
+    #     s += "A"
+    #     print("A")
+    # return s
+
+# print(line)
+# first = nx.shortest_path(numpad, "A", line[0])
+# for idy in range(0, len(first) - 1):
+#     s += numpad[first[idy]][first[idy+1]]['command']
+# s += "A"
+
+# for idx in range(0, len(line) - 1):
+#     enter = nx.shortest_path(numpad, line[idx], line[idx+1])
+#     for idy in range(0, len(enter) - 1):
+#         s += numpad[enter[idy]][enter[idy+1]]['command']
+#     s += "A"
+# s = "A" + s
+# total = expand("A" + line)
+# print(s)
+# print("Step 1: ", line, ": ", s)
+# s2 = expand(s, controller)
+# print("Step 2: ", line, ": ", s2)
+# s3 = expand(s2, controller)
+# print("Step 3: ", line, ": ", s3, " length: ", len(s3))
+# total += len(s3) * num_part
+# s4 = expand(s3, controller)
+# print("Step 4: ", line, ": ", s4)
+
 
