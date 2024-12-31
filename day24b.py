@@ -5,9 +5,11 @@ import functools
 import itertools
 from itertools import pairwise
 import aocd
+import graphviz
 import operator
 
 data = aocd.get_data(day=24, year=2024)
+
 
 sample = """x00: 1
 x01: 1
@@ -89,6 +91,8 @@ x03 AND y03 -> z03
 x04 AND y04 -> z04
 x05 AND y05 -> z00"""
 
+
+
 # data = sample3
 
 initial_wires_data, gates_data = data.strip().split("\n\n")
@@ -119,6 +123,20 @@ for line in gates_data.splitlines():
 print("Wires: ", wires)
 print("Gates: ", gates)
 
+dot = graphviz.Digraph('day 24')
+
+for wire in wires.keys():
+    dot.node(wire)
+
+for out_wire, tup in gates.items():
+
+    wire1, wire2, op = tup
+    label = '{} {} {}'.format(wire1, op.__name__, wire2)
+    dot.node(label)
+    dot.edge(wire1, label)
+    dot.edge(wire2, label)
+    dot.edge(label, out_wire)
+dot.render('wires.gv')
 
 def run_circuit(loc_gates, loc_wires): #returns int value of z wires
     done = False
@@ -159,21 +177,5 @@ x_val = int(xs,2)
 y_val = int(ys,2)
 print (x_val, " - ", y_val)
 
-# combinations = itertools.permutations(gates.keys(), 8)
-combinations = itertools.combinations(gates.keys(), 8)
-for combo in combinations:
-    # print("Checking: ", combo)
-    swapped_wires = wires.copy()
-    swapped_gates = gates.copy()
-    for i in range(0, len(combo)//2):
-        swap1 = combo[i*2]
-        swap2 = combo[i*2+1]
-        hold = swapped_gates[swap1]
-        swapped_gates[swap1] = swapped_gates[swap2]
-        swapped_gates[swap2] = hold
-    i = run_circuit(swapped_gates, swapped_wires)
-    # print(x_val, "+", y_val, "=")
-    # print(i)
-    if x_val + y_val == i:
-        print("Eureka! ", combo)
-        break
+
+# cnk,mps,msq,qwf,vhm,z14,z27,z39
